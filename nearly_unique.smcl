@@ -1,0 +1,291 @@
+{smcl}
+{txt}{...}
+{pstd}{c TLC}{hline 43}{c TRC}{break}
+{bf}{...}
+{c |}{bf: OpenSDP Data Janitor{space 22}}{c |}{break}
+{c |}{bf: Data Cleaning Skills in Stata{space 13}}{c |}{break}
+{sf}{...}
+{c BLC}{hline 43}{c BRC}
+
+{pstd}{bf:Data Cleaning Tutorial: "Nearly Unique"}{break}
+
+{pstd}In this tutorial you will take a data file that is "nearly unique" at
+the student and year level, clean the variables in the file to make them internally 
+consistent, and then drop the resulting duplicate records. The goal is to end up with
+exactly one record per student and year. Making the data unique by student and year will 
+make the data easier to analyze, and it will make it easier to combine the data with 
+other student files.
+
+{pstd}Editing longitudinal data to make it consistent is a common data cleaning chore. To 
+do this you will need to choose and apply decision rules. For example, when one student 
+has two records in the same year, one with a free lunch indicator set to "Yes" and one 
+with a free lunch indicator set to "No," which record should you keep? What if someone's 
+gender changes over time? With tens of thousands of student records, you won't be able to 
+investigate each case individually. 
+
+{pstd}Instead, it's usually better to make a sensible 
+decision rule, apply it to your data, and move on. If you are planning to use your data to 
+research overall patterns and trends, making small changes during data cleaning most 
+likely won't affect your results. If you do need to make more than a trivial number of 
+changes to make your data consistent, you should investigate what might be causing  
+data quality problems.
+
+{pstd}This tutorial assumes that you have only a very basic knowledge of Stata. Here are 
+some of the commands you will need that might not be familiar to you (you can click to see 
+the help page for each command):
+
+	{help codebook}
+	{help duplicates}
+	{help egen}
+	{help egenmore:egen nvals}
+	{help foreach}
+	{help isid}
+	
+{pstd}If you haven't used the {cmd:nvals} option with the {cmd:egen} command before, you 
+may need to install the egenmore package. Click {stata ssc install egenmore:here} to 
+install it.
+	
+{pstd}One final note: this tutorial is interactive. You will either click on commands in 
+blue or type commands in Stata's Command window. However, when you are cleaning your own 
+data, you should store your data cleaning commands in a program (do file). This will let 
+you replicate your work and document your decision rules.
+
+{pstd}Let's get started. Click below to load the data:
+
+	{stata use cleaningPuzzle_12, clear}
+	
+{pstd}Use the {cmd:codebook} command to learn more about the variables in the file. 
+
+	{stata codebook}
+	
+{pstd}Are there any duplicated records in the file?
+
+	{stata duplicates report}
+	
+{pstd}We're hoping the data is unique by student id and school year--that is, that the two
+variables together form a unique id for each record. Check to see if this is true.
+
+	{stata isid sid school_year}
+	
+{pstd}{cmd: isid} fails, so let's investigate the structure of the file a bit more. Look 
+at the distribution of school year, and review details about student ID.
+
+	{stata tab school_year, missing}
+	{stata codebook sid}
+	
+{pstd}The {cmd:missing} option tells Stata to report on all records, including those with 
+a missing value for school year. In this case, there are no missing values.
+
+{pstd}Next, check to see how many records there are for each student-year combination. Do 
+this yourself. Type the following into Stata's command window and press Enter:
+
+	{cmd:duplicates report sid school_year}
+	
+{pstd}Almost all of the data--more than 87,000 records--is unique by student and school 
+year, but there are a few hundred cases of duplicated student id-school year combinations. 
+Let's examine the duplicated records. Type the following into the command window:
+
+	{cmd:duplicates tag sid school_year, gen(tag)}
+	
+{pstd}This generates a variable called tag that is set to one or more for sets of records 
+that have student-school year duplicates, and zero otherwise. Sort the data and then look 
+at just the duplicated records. For records with the same student id and school year, what 
+variables are different? You can close the data browser window after you are 
+finished looking at the inconsistent records.
+
+	{stata tab tag}
+	{stata sort sid school_year}
+	{stata browse if tag == 1}
+	
+{pstd}Now that we've used it to inspect the duplicates, drop the tag variable to keep the 
+data tidy. 
+
+	{stata drop tag}
+	
+{pstd}So far, we've taken a typical approach to getting started with cleaning data. We've 
+opened the file, reviewed the variables, examined the key variables more carefully, and 
+investigated the structure. Now that we understand the structural issues, let's go through
+the variables systematically to apply decision rules and fix inconsistencies.
+
+{pstd}Examine the program participation variables first to see how they are coded. The 
+{cmd:mi} option is short for {cmd:missing}. You can click on the commands, or type
+them into the Stata command window.
+	
+	{stata tab frpl, mi}
+	{stata tab iep, mi}
+	{stata tab ell, mi}
+	{stata tab gifted, mi}
+	
+{pstd}There should be just one value per student per year for these variables, but we know
+that is not the case from looking at the data. Three of these variables have values
+of either zero (no) or one (yes): iep (special education status), ell (English Language 
+Learner status), and gifted (gifted program status). Let's make a decision rule to prefer 
+the records with the value of one--that is, assume students are program participants in a 
+given year if there is any record for that year which identifies them as program 
+participants.
+
+{pstd}Let's start with iep. The first step is to use the {cmd:egen max} command to 
+generate a variable that has the maximum value of iep for each student. Do this yourself.
+Type the following into the command window:
+
+	{cmd:egen max_iep = max(iep), by(sid school_year)}
+	
+{pstd}This generates a variable called max_iep which equals 1 for all the records for
+a given student and year if any of the records for that student and year have the value 
+1. Otherwise, max_iep will be equal to 0. The {cmd:egen max} command ignores missing
+values, but there aren't any missing values in this data.
+
+{pstd}The next step is to replace the values of iep with the max_iep values, and then
+drop the max_iep variable. Type
+
+	{cmd:replace iep = max_iep}
+	{cmd:drop max_iep}
+	
+{pstd}Go through the same process with the other two binary variables, ell and gifted. You 
+can click the lines one at a time, or type them into the command window.
+
+	{stata egen max_ell = max(ell), by(sid school_year)}
+	{stata replace ell = max_ell}
+	{stata drop max_ell}
+	
+	{stata egen max_gifted = max(gifted), by(sid school_year)}
+	{stata replace gifted = max_gifted}
+	{stata drop max_gifted}
+
+{pstd}Now that the binary program participation variables are consistent by student and 
+year, check to see how many records have become duplicates and can be dropped. Type 
+	
+	{cmd:duplicates drop} 
+	
+{pstd}and you'll see that about 250 records were exact duplicates and were dropped. Check 
+to see how many duplicates of student id and school year are still present in the 
+data. Type
+
+	{cmd:duplicates report sid school_year}
+
+{pstd}There are still student-school year duplicates, but fewer than before.
+
+{pstd}If you were writing these commands in a Stata do file instead of entering them one 
+line at a time, you could use one of Stata's looping commands, and you'd only have to 
+write the commands once to process all three variables. Here's how the looping syntax 
+would look in a do file:
+
+	{cmd:foreach var of varlist iep ell gifted {c -(}}
+		{cmd:egen max_`var' = max(`var'), by(sid school_year)}
+		{cmd:replace `var' = max_`var'}
+		{cmd:drop max_`var'}
+	{cmd:}}
+
+{pstd}Getting back to the data, review the values for frpl (free or reduced price lunch 
+eligibility).
+
+	{stata tab frpl, mi}
+	
+{pstd}The frpl variable has three codes--F (free), R (reduced), and N (non-frpl). A 
+sensible decision rule is to make records consistent by choosing the maximum level of 
+eligibility for each student in a given year. To do this, we need to recode the variables 
+to be numeric instead of text. The first step is to replace the letters with numbers. You
+need to use quotes because the variables are still defined as string, or text variables. 
+Type the following:
+
+	{cmd:replace frpl = "2" if frpl == "F"}
+	{cmd:replace frpl = "1" if frpl == "R"}
+	{cmd:replace frpl = "0" if frpl == "N"}
+	
+{pstd}Tabulate the results to make sure that the commands worked correctly.
+	
+	{cmd:tab frpl, mi}
+	
+{pstd}Next, tell Stata to convert frpl from a string to a numeric variable. Type
+
+	{cmd:destring frpl, replace}
+	
+{pstd}Now that frpl is numeric, replace it with the maximum value for each student-year
+combination.
+
+	{stata egen max_frpl = max(frpl), by(sid school_year)}
+	{stata replace frpl = max_frpl}
+	{stata drop max_frpl}
+	
+{pstd}After cleaning up frpl, how many observations are now duplicates? Type
+	
+	{cmd:duplicates drop}
+	{cmd:duplicates report sid school_year}
+	
+{pstd}There are very few duplicates left. Inspect them.
+
+	{stata duplicates tag sid school_year, gen(tag)}
+	{stata browse if tag == 1}
+	{stata drop tag}
+
+{pstd}You could edit the records individually to fix the last few, but that 
+approach would only work for this specific data file--you wouldn't be able to use the same 
+method for a new version of the file. And, just getting the data unique by student and 
+year could mask other problems with the data, like variables that should be the same from 
+year to year but instead have multiple values. 
+
+{pstd}The two remaining variables are race_ethnicity and male. Both of these demographic 
+variables should be the same for a given student in every year. There are several possible 
+ways to approach choosing decision rules for these two variables, but one possibility is 
+to choose the mode (the most common value). When there is more than one mode (a tie), we 
+can choose the most recent value. 
+	
+{pstd}Use the {cmd:egen nvals} command to count the number of values of gender for each 
+student. Type
+
+	{cmd}tab male, mi
+	{cmd}egen num_gender = nvals(male), by(sid)
+
+{pstd}Tabulate num_gender to see how many records have inconsistent values, and then 
+inspect the records.
+
+	{stata tab num_gender}
+	{stata browse if num_gender == 2}
+	
+{pstd}Use another variant of the {cmd:egen} command, {cmd:egen mode}, to identify the most
+common value. Type
+	
+	{cmd}egen mode_male = mode(male), by(sid)
+
+{pstd}The mode_male variable will be missing if there is a tie between two or more 
+modes. When that happens, pick the most recent value. If we use the {cmd:"by:"} 
+prefix, Stata's shorthand reference for the last record, {cmd:_N}, will refer to the last
+record for a particular student, rather than the last record in the dataset. We can use 
+the _N notation to identify the most recent record. First make sure the data is sorted, 
+and then replace mode_male with the most recent value when mode_male is missing. Type
+	
+	{cmd:sort sid school_year}
+	{cmd}by sid: replace mode_male = male[_N] if missing(mode_male)
+	{cmd}tab male mode_male, mi
+	{cmd}replace male = mode_male
+	{cmd}drop mode_male num_gender
+	
+{pstd}Follow the same logic to clean the race_ethnicity variable.	The {cmd:egen nvals} 
+command works for string variables as well as numeric variables. 	
+
+	{stata tab race, mi}
+	{stata egen num_race = nvals(race), by(sid)} 
+	{stata tab num_race}
+	
+{pstd}Choose the most common value, and choose the most recent value if there's a tie.	
+	
+	{stata egen mode_race = mode(race), by(sid)}
+	{stata sort sid school_year}
+	{stata "by sid: replace mode_race = race[_N] if missing(mode_race)"}
+	{stata replace race = mode_race} 
+	{stata drop num_race mode_race} 
+	
+{pstd}Now that we've made all the variables consistent, check to see if this resolves the 
+last few duplicates and fixes the panel (longitudinal) data structure. If the isid command 
+doesn't respond with an error, the data is unique at the student and school year level. 
+Type
+
+	{cmd:duplicates drop}
+	{cmd:isid sid school_year}
+	
+{pstd}Hooray!
+	
+
+	
+	
+_
