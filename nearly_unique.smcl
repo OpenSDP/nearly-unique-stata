@@ -52,7 +52,7 @@ you replicate your work and document your decision rules.
 
 {pstd}Let's get started. Click below to load the data:
 
-	{stata use cleaningPuzzle_12, clear}
+	{stata use nearly_unique, clear}
 	
 {pstd}Use the {cmd:codebook} command to learn more about the variables in the file. 
 
