@@ -233,8 +233,8 @@ can choose the most recent value.
 {pstd}Use the {cmd:egen nvals} command to count the number of values of gender for each 
 student. Type
 
-	{cmd}tab male, mi
-	{cmd}egen num_gender = nvals(male), by(sid)
+	{cmd:tab male, mi}
+	{cmd:egen num_gender = nvals(male), by(sid)}
 
 {pstd}Tabulate num_gender to see how many records have inconsistent values, and then 
 inspect the records.
@@ -242,10 +242,10 @@ inspect the records.
 	{stata tab num_gender}
 	{stata browse if num_gender == 2}
 	
-{pstd}Use another variant of the {cmd:egen} command, {cmd:egen mode}, to identify the most
+{pstd}Use another variant of the {cmd:egen} command, {cmd:egen mode}, to ident}ify the most
 common value. Type
 	
-	{cmd}egen mode_male = mode(male), by(sid)
+	{cmd:egen mode_male = mode(male), by(sid)}
 
 {pstd}The mode_male variable will be missing if there is a tie between two or more 
 modes. When that happens, pick the most recent value. If we use the {cmd:"by:"} 
@@ -255,10 +255,10 @@ the _N notation to identify the most recent record. First make sure the data is 
 and then replace mode_male with the most recent value when mode_male is missing. Type
 	
 	{cmd:sort sid school_year}
-	{cmd}by sid: replace mode_male = male[_N] if missing(mode_male)
-	{cmd}tab male mode_male, mi
-	{cmd}replace male = mode_male
-	{cmd}drop mode_male num_gender
+	{cmd:by sid: replace mode_male = male[_N] if missing(mode_male)}
+	{cmd:tab male mode_male, mi}
+	{cmd:replace male = mode_male}
+	{cmd:drop mode_male num_gender}
 	
 {pstd}Follow the same logic to clean the race_ethnicity variable.	The {cmd:egen nvals} 
 command works for string variables as well as numeric variables. 	
@@ -277,8 +277,7 @@ command works for string variables as well as numeric variables.
 	
 {pstd}Now that we've made all the variables consistent, check to see if this resolves the 
 last few duplicates and fixes the panel (longitudinal) data structure. If the isid command 
-doesn't respond with an error, the data is unique at the student and school year level. 
-Type
+doesn't respond with an error, the data is unique at the student and school year level. Type
 
 	{cmd:duplicates drop}
 	{cmd:isid sid school_year}
